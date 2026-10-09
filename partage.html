@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Partager la vidéo</title>
+<style>
+  :root{--bg:#0b1f3a;--fg:#fff;--gold:#e8c26a;--muted:#b9c4d6}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.45 -apple-system,system-ui,sans-serif;padding:20px 16px;display:flex;flex-direction:column;gap:14px;min-height:100vh}
+  h1{font-size:20px;margin:0}
+  p{margin:0;color:var(--muted)}
+  video{width:100%;max-height:50vh;border-radius:12px;background:#000}
+  button,a.btn{display:block;width:100%;padding:16px;border:0;border-radius:14px;font:600 18px/1.2 inherit;text-align:center;text-decoration:none}
+  .main{background:var(--gold);color:#0b1f3a}
+  .main:disabled{opacity:.5}
+  .sec{background:transparent;color:var(--fg);border:1px solid var(--muted)}
+  #etat{font-size:15px}
+</style>
+</head>
+<body>
+<h1 id="titre">Partager la vidéo</h1>
+<video id="vid" controls playsinline preload="metadata"></video>
+<p id="etat">Chargement de la vidéo…</p>
+<button id="go" class="main" disabled>📲 Envoyer dans l'appli</button>
+<p>Dans le menu qui s'ouvre, choisis l'appli : elle s'ouvre avec la vidéo déjà chargée. La légende est copiée : colle-la, ajoute le tube, publie.</p>
+<button id="copie" class="sec">Copier la légende</button>
+<a id="dl" class="btn sec" download>Enregistrer la vidéo</a>
+<script>
+const q=new URLSearchParams(location.search);
+const src=q.get("v")||"",legende=q.get("t")||"",appli=q.get("a")||"";
+const etat=document.getElementById("etat"),go=document.getElementById("go");
+if(appli){document.getElementById("titre").textContent="Publier sur "+appli;go.textContent="📲 Envoyer dans "+appli}
+let fichier=null;
+function copier(){if(!legende)return;try{navigator.clipboard.writeText(legende)}catch(e){}}
+document.getElementById("copie").onclick=()=>{copier();etat.textContent="Légende copiée."};
+if(!/^https:\/\//.test(src)){etat.textContent="Lien de vidéo manquant.";}
+else{
+  document.getElementById("vid").src=src;document.getElementById("dl").href=src;
+  fetch(src).then(r=>{if(!r.ok)throw new Error(r.status);return r.blob()}).then(b=>{
+    const nom=(src.split("/").pop()||"video.mp4").split("?")[0];
+    fichier=new File([b],nom,{type:b.type||"video/mp4"});
+    if(navigator.canShare&&navigator.canShare({files:[fichier]})){go.disabled=false;etat.textContent="Vidéo prête."}
+    else etat.textContent="Ce navigateur ne sait pas envoyer la vidéo à une appli. Ouvre cette page dans Safari (iPhone) ou Chrome (Android), ou utilise « Enregistrer la vidéo ».";
+  }).catch(e=>{etat.textContent="La vidéo n'a pas pu être chargée ("+e.message+"). Utilise « Enregistrer la vidéo »."});
+}
+go.onclick=async()=>{
+  copier();
+  try{await navigator.share({files:[fichier]});etat.textContent="Envoyé. Colle la légende dans l'appli."}
+  catch(e){if(e.name!=="AbortError")etat.textContent="Envoi impossible : "+e.message}
+};
+</script>
+</body>
+</html>
